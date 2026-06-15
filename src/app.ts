@@ -2,6 +2,7 @@ import http, { IncomingMessage, ServerResponse, RequestListener } from "http";
 
 interface MikaResponse extends ServerResponse {
     json(data: unknown): void;
+    redirect(url: string): void;
 }
 
 interface MikaRequest extends IncomingMessage {
@@ -84,6 +85,12 @@ export class App {
                     this.write(JSON.stringify(data));
                     this.end();
                 };
+
+                mikaRes.redirect = function (url: string) {
+                    this.statusCode = 302;
+                    this.setHeader("Location", url);
+                    this.end();
+                }
 
 
                 const route = this.routes.find(
