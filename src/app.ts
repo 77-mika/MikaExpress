@@ -4,10 +4,15 @@ interface MikaResponse extends ServerResponse {
     json(data: unknown): void;
 }
 
-type Handler = (req: IncomingMessage, res: MikaResponse) => void;
+interface MikaRequest extends IncomingMessage {
+    query: Record<string, string>;
+}
+
+
+type Handler = (req: MikaRequest, res: MikaResponse) => void;
 type NextFunction = () => void;
 type Middleware = (
-    req: IncomingMessage,
+    req: MikaRequest,
     res: MikaResponse,
     next: NextFunction,
 ) => void;
@@ -65,6 +70,12 @@ export class App {
                     return;
                 }
 
+
+                const mikaReq = req as MikaRequest;
+                const url = new URL(req.url || "/", `http://${req.headers.host}`);
+                mikaReq.query = Object.fromEntries(url.searchParams.entries());
+
+
                 const method = req.method as HttpMethod;
 
                 const mikaRes = res as MikaResponse;
@@ -74,8 +85,9 @@ export class App {
                     this.end();
                 };
 
+
                 const route = this.routes.find(
-                    (r) => r.method === method && r.path === req.url,
+                    (r) => r.method === method && r.path === url.pathname,
                 );
                 if (!route) {
                     res.writeHead(404, { "Content-Type": "text/plain" });
@@ -90,9 +102,9 @@ export class App {
                         const currentMiddleware =
                             this.middlewares[middlewareIndex];
                         middlewareIndex++;
-                        currentMiddleware(req, mikaRes, next);
+                        currentMiddleware(mikaReq, mikaRes, next);
                     } else {
-                        route.handler(req, mikaRes);
+                        route.handler(mikaReq, mikaRes);
                     }
                 };
                 next();
