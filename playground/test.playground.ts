@@ -1,4 +1,4 @@
-import mikaexpress from "../src/index";
+import mikaexpress from "../src/index.ts";
 
 const app = mikaexpress();
 
