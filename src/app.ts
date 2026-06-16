@@ -1,24 +1,5 @@
-import http, { IncomingMessage, ServerResponse, RequestListener } from "http";
-
-interface MikaResponse extends ServerResponse {
-    json(data: unknown): void;
-    redirect(url: string): void;
-}
-
-interface MikaRequest extends IncomingMessage {
-    query: Record<string, string>;
-}
-
-
-type Handler = (req: MikaRequest, res: MikaResponse) => void;
-type NextFunction = () => void;
-type Middleware = (
-    req: MikaRequest,
-    res: MikaResponse,
-    next: NextFunction,
-) => void;
-type HttpMethod = "GET" | "POST" | "PUT" | "DELETE";
-// type Handler = RequestListener;
+import http, { IncomingMessage, ServerResponse } from "http";
+import { Handler, HttpMethod, Middleware, MikaRequest, MikaResponse } from "./types/http";
 
 interface Route {
     method: HttpMethod;
@@ -71,11 +52,13 @@ export class App {
                     return;
                 }
 
-
                 const mikaReq = req as MikaRequest;
-                const url = new URL(req.url || "/", `http://${req.headers.host}`);
+                const url = new URL(
+                    req.url || "/",
+                    `http://${req.headers.host}`,
+                );
                 mikaReq.query = Object.fromEntries(url.searchParams.entries());
-
+                mikaReq.path = url.pathname;
 
                 const method = req.method as HttpMethod;
 
@@ -90,11 +73,10 @@ export class App {
                     this.statusCode = 302;
                     this.setHeader("Location", url);
                     this.end();
-                }
-
+                };
 
                 const route = this.routes.find(
-                    (r) => r.method === method && r.path === url.pathname,
+                    (r) => r.method === method && r.path === mikaReq.path,
                 );
                 if (!route) {
                     res.writeHead(404, { "Content-Type": "text/plain" });
