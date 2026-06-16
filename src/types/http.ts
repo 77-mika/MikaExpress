@@ -7,6 +7,7 @@ export interface MikaResponse extends ServerResponse {
 
 export interface MikaRequest extends IncomingMessage {
     query: Record<string, string>;
+    params: Record<string, string>;
     path: string;
 }
 

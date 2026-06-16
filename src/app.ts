@@ -1,10 +1,17 @@
 import http, { IncomingMessage, ServerResponse } from "http";
-import { Handler, HttpMethod, Middleware, MikaRequest, MikaResponse } from "./types/http";
+import {
+    Handler,
+    HttpMethod,
+    Middleware,
+    MikaRequest,
+    MikaResponse,
+} from "./types/http";
 
 interface Route {
     method: HttpMethod;
     path: string;
     handler: Handler;
+    segments: string[];
 }
 
 export class App {
@@ -13,7 +20,35 @@ export class App {
     private middlewares: Middleware[] = [];
     //method to add a route
     private registerRoute(method: HttpMethod, path: string, handler: Handler) {
-        this.routes.push({ method, path, handler });
+        const segments = path.split("/").filter(Boolean);
+        this.routes.push({ method, path, handler, segments });
+    }
+
+    private matchRoute(method: HttpMethod, requestPath: string) {
+        const requestSegments = requestPath.split("/").filter(Boolean);
+        for (const route of this.routes) {
+            if (route.method !== method) continue;
+            const routeSegments = route.segments
+            if (routeSegments.length !== requestSegments.length) continue;
+
+            const params: Record<string, string> = {};
+            let isMatch = true;
+            for (let i = 0; i < routeSegments.length; i++) {
+                const routeSegment = routeSegments[i];
+                const requestSegment = requestSegments[i];
+                if (routeSegment.startsWith(":")) {
+                    const paramName = routeSegment.slice(1);
+                    params[paramName] = requestSegment;
+                } else if (routeSegment !== requestSegment) {
+                    isMatch = false;
+                    break;
+                }
+            }
+            if (isMatch) {
+                return { route, params };
+            }
+        }
+        return null;
     }
 
     get(path: string, handler: Handler) {
@@ -56,6 +91,7 @@ export class App {
                 const url = new URL(
                     req.url || "/",
                     `http://${req.headers.host}`,
+
                 );
                 mikaReq.query = Object.fromEntries(url.searchParams.entries());
                 mikaReq.path = url.pathname;
@@ -75,15 +111,17 @@ export class App {
                     this.end();
                 };
 
-                const route = this.routes.find(
-                    (r) => r.method === method && r.path === mikaReq.path,
-                );
-                if (!route) {
+                const match = this.matchRoute(method, mikaReq.path);
+
+                
+                if (!match) {
                     res.writeHead(404, { "Content-Type": "text/plain" });
                     res.write("Not Found");
                     res.end();
                     return;
                 }
+
+                mikaReq.params = match.params;
 
                 let middlewareIndex = 0;
                 const next = () => {
@@ -93,7 +131,7 @@ export class App {
                         middlewareIndex++;
                         currentMiddleware(mikaReq, mikaRes, next);
                     } else {
-                        route.handler(mikaReq, mikaRes);
+                        match.route.handler(mikaReq, mikaRes);
                     }
                 };
                 next();
