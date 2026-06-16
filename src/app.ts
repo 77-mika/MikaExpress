@@ -28,7 +28,7 @@ export class App {
         const requestSegments = requestPath.split("/").filter(Boolean);
         for (const route of this.routes) {
             if (route.method !== method) continue;
-            const routeSegments = route.segments
+            const routeSegments = route.segments;
             if (routeSegments.length !== requestSegments.length) continue;
 
             const params: Record<string, string> = {};
@@ -91,7 +91,6 @@ export class App {
                 const url = new URL(
                     req.url || "/",
                     `http://${req.headers.host}`,
-
                 );
                 mikaReq.query = Object.fromEntries(url.searchParams.entries());
                 mikaReq.path = url.pathname;
@@ -113,27 +112,28 @@ export class App {
 
                 const match = this.matchRoute(method, mikaReq.path);
 
-                
-                if (!match) {
-                    res.writeHead(404, { "Content-Type": "text/plain" });
-                    res.write("Not Found");
-                    res.end();
-                    return;
-                }
-
-                mikaReq.params = match.params;
-
                 let middlewareIndex = 0;
+
                 const next = () => {
                     if (middlewareIndex < this.middlewares.length) {
                         const currentMiddleware =
                             this.middlewares[middlewareIndex];
                         middlewareIndex++;
+
                         currentMiddleware(mikaReq, mikaRes, next);
-                    } else {
-                        match.route.handler(mikaReq, mikaRes);
+                        return;
                     }
+
+                    if (!match) {
+                        res.writeHead(404, { "Content-Type": "text/plain" });
+                        res.end("Not Found");
+                        return;
+                    }
+
+                    mikaReq.params = match.params;
+                    match.route.handler(mikaReq, mikaRes);
                 };
+
                 next();
             },
         );

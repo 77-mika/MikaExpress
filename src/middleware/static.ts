@@ -17,27 +17,23 @@ const MIME_TYPES: Record<string, string> = {
 export function staticMiddleware(dir: string): Middleware {
     const publicDir = path.resolve(dir);
 
-
     return (req, res, next) => {
         const relativePath = req.path.slice(1);
         const filePath = path.resolve(path.join(dir, relativePath));
         const normalizedPath = path.normalize(filePath);
 
-
-
-
-
         const relative = path.relative(publicDir, normalizedPath);
 
-
-        if (relative.startsWith("..")|| path.isAbsolute(relative)) {
+        if (relative.startsWith("..") || path.isAbsolute(relative)) {
             res.writeHead(403, { "Content-Type": "text/plain" });
             res.end("Access Denied");
             return;
         }
 
-
-        if (!fs.existsSync(normalizedPath) || !fs.statSync(normalizedPath).isFile()) {
+        if (
+            !fs.existsSync(normalizedPath) ||
+            !fs.statSync(normalizedPath).isFile()
+        ) {
             return next();
         }
 

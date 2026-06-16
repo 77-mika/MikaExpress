@@ -1,7 +1,3 @@
 import { App } from "./app";
-
 export { staticMiddleware } from "./middleware/static";
-
-export default function mikaexpress() {
-    return new App();
-}
+export default function mikaexpress(): App;
